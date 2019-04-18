@@ -29,6 +29,9 @@
 #define NODECPP_AWAITABLE_H
 
 #include <experimental/coroutine>
+#include <cassert>
+
+extern std::experimental::coroutine_handle<> to_be_resumed;
 
 namespace nodecpp {
 
@@ -50,10 +53,12 @@ struct promise_type_struct_base {
 		{
 			auto tmph = hr;
 			hr = nullptr;
-			tmph();
+
+			assert(!to_be_resumed);
+			to_be_resumed = tmph;
 		}
-//			return std::experimental::suspend_always{};
-		return std::experimental::suspend_never{};
+		return std::experimental::suspend_always{};
+//		return std::experimental::suspend_never{};
     }
 	void unhandled_exception() {
 		e_pending = std::current_exception();
@@ -118,7 +123,7 @@ struct awaitable  {
 		return *this;
 	}   
 	
-	~awaitable() {}
+	~awaitable() { if (coro) coro.destroy(); }
 
     T get() {
         return coro.promise().value;
@@ -143,12 +148,14 @@ struct awaitable  {
 
 };
 
+inline
 auto promise_type_struct<void>::get_return_object() {
 		auto h = handle_type::from_promise(*this);
 		return awaitable<void>{h};
 }
 
 template<class T>
+inline
 auto promise_type_struct<T>::get_return_object() {
 		auto h = handle_type::from_promise(*this);
 		return awaitable<T>{h};

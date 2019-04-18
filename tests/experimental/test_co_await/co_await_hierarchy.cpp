@@ -31,6 +31,7 @@
 #include <stdio.h>
 #include <string>
 
+std::experimental::coroutine_handle<> to_be_resumed;
 
 struct handler_context
 {
@@ -253,5 +254,15 @@ void processing_loop()
 					g_callbacks[i].awaiting.destroy();
 			}
 		}
+
+		while (to_be_resumed) {
+			auto tmph = to_be_resumed;
+			to_be_resumed = nullptr;
+
+			tmph();
+		}
+
 	}
 }
+
+
